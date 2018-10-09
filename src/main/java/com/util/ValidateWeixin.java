@@ -9,7 +9,7 @@ import java.util.Arrays;
  */
 public class ValidateWeixin {
 
-    public static String token="jieguang";
+    public static String token="jiekuang";
 
     public static boolean checkSignature(String signature,String timestamp,String nonce){
         //把token timestamp nonce组成字符串数组
