@@ -1,4 +1,4 @@
-package custom.message;
+package com.custommessage;
 
 import com.entites.MyObject;
 

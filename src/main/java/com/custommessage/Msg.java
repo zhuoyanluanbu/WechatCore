@@ -1,6 +1,4 @@
-package custom.message;
-
-import com.entites.MyObject;
+package com.custommessage;
 
 /**
  * Created by huyoucheng on 2018/10/9.

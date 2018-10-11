@@ -1,10 +1,12 @@
 package com.util;
 
-import com.entites.WechatTokenAndTicket;
+import com.entites.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import custom.message.BaseMsg;
+import com.custommessage.BaseMsg;
 import org.apache.log4j.Logger;
+
+import java.io.IOException;
 
 /**
  * Created by huyoucheng on 2018/10/8.
@@ -28,6 +30,8 @@ public class WechatRequests {
     // 发送客服消息
     public static final String custom_message_url = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=ACCESS_TOKEN";
 
+    //查询用户信息
+    public static final String userinfo_url_unionID="https://api.weixin.qq.com/cgi-bin/user/info?access_token=ACCESS_TOKEN&openid=OPENID&lang=zh_CN";
 
     //获取accessToken和ticket
     public static WechatTokenAndTicket getAccessTokenAndTicket(){
@@ -75,10 +79,54 @@ public class WechatRequests {
     public static String sendCustomMsg(String accessToken,BaseMsg baseMsg){
         String custom_message_RequestUrl = custom_message_url.replace("ACCESS_TOKEN",accessToken);
         String res = HttpHelper.httpsPost(custom_message_RequestUrl, baseMsg.toJson());
-        System.out.println(res);
+        logger.info(baseMsg.toJson() + "发送消息" + res);
         return res;
     }
 
+    //查询用户信息
+    public static WechatUser getWechatUserByOpenId(String accessToken, String openid){
+        WechatUser user = new WechatUser();
+        String api = userinfo_url_unionID.replace("ACCESS_TOKEN",accessToken).replace("OPENID",openid);
+        String res = HttpHelper.httpsGet(api);
+        logger.info("res:("+res+")");
+        try {
+            user = mapper.readValue(res,WechatUser.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return user;
+    }
+
+    //永久二维码
+    public static QrResp getQrTicketForEver (QrForeverReq qrForeverReq,String accessToken){
+        try {
+            String qrRes = HttpHelper.httpPost("https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=" + accessToken,
+                    qrForeverReq.toJsonNode(),
+                    false);
+            logger.info("qrRes:("+qrRes+")");
+
+            QrResp qrForeverResp = MyObject.toBean(qrRes, QrResp.class);
+            return qrForeverResp;
+        }catch (Exception e){
+            logger.error(e);
+        }
+        return null;
+    }
+
+    //临时二维码
+    public static QrResp getQrTicketTemp (QrTempReq qrTempReq,String accessToken){
+        try {
+            String qrRes = HttpHelper.httpPost("https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=" + GetTokenTicket.wechatTokenAndTicket.getToken(),
+                    qrTempReq.toJsonNode(),
+                    false);
+            logger.info("qrRes:(" + qrRes + ")");
+            QrResp qrResp = MyObject.toBean(qrRes,QrResp.class);
+            return qrResp;
+        }catch (Exception e){
+            logger.error(e);
+        }
+        return null;
+    }
 
     public class WechatErr{
         public int errcode;

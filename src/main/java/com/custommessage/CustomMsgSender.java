@@ -1,11 +1,9 @@
-package custom.message;
+package com.custommessage;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.util.GetTokenTicket;
 import com.util.WechatRequests;
-
-import java.util.Map;
 
 /**
  * Created by huyoucheng on 2018/10/9.

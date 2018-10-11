@@ -2,16 +2,17 @@ package com.controller;
 
 import com.entites.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jedis.JedisUtil;
 import com.message.MessageUtil;
 import com.message.entity.BaseMessage;
 import com.message.entity.LocationMessage;
 import com.message.entity.TextMessage;
 import com.message.response.TextMessageResponse;
-import com.util.TimeConvert;
-import com.util.ValidateWeixin;
-import custom.message.CustomMsgSender;
+import com.service.AccountClient;
+import com.service.UserClient;
+import com.util.*;
+import com.custommessage.CustomMsgSender;
 import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -33,6 +34,15 @@ public class CoreServlet {
     private String controllerName = "CoreServlet";
 
     ObjectMapper mapper = new ObjectMapper();
+
+    @Autowired
+    UserClient userClient;
+
+    @Autowired
+    AccountClient accountClient;
+
+    @Autowired
+    BaiduUtil baiduUtil;
 
     @Value("${subscribeRespContent}")
     String subscribeRespContent;
@@ -107,9 +117,20 @@ public class CoreServlet {
             String enventParam = map.get("eventKey");
             if(eventName.equalsIgnoreCase("subscribe")){//关注事件
                 toUserBaseMessageXml = TextMessageResponse.buildMessageResponse(fromUserName,toUserName,subscribeRespContent);
-                //新用户只要关注就赠送天棒
+                //新用户只要关注就赠送余额
+                UserData userData = getUserData(fromUserName);
+                if (userData==null){//新用户，进行注册并送余额
+                    userData = initUser(WechatRequests.getWechatUserByOpenId(GetTokenTicket.wechatTokenAndTicket.getToken(),fromUserName));
+                    userData = userClient.saveUser(userData);//新生成的用户
+                    accountClient.systemGive(new SystemGiveForm(userData.getId(),5000,1,"新用户关注送50元")); //送余额
+                }else {//更新用户信息
+                    userData = initUser(WechatRequests.getWechatUserByOpenId(GetTokenTicket.wechatTokenAndTicket.getToken(),fromUserName));
+                    userClient.updateUser(userData);
+                }
 
                 if (enventParam!=null && enventParam.length()>0){//扫描代参二维码(关注)
+
+                }else {
 
                 }
 
@@ -122,6 +143,9 @@ public class CoreServlet {
             }else if(eventName.equalsIgnoreCase("location")){//上报位置事件
                 LocationMessage locationMessage = MyObject.toBean(MyObject.mapToJsonStr(map),LocationMessage.class);
                 fromBaseMessage = locationMessage;
+                DetailAddress adress = baiduUtil.getDetailAddressByLatLng(locationMessage.getLatitude(), locationMessage.getLongitude());
+                toUserBaseMessageXml = TextMessageResponse.buildMessageResponse(fromUserName,
+                        toUserName,adress.getFormatted_address());
             }else if(eventName.equalsIgnoreCase("click")){//点击菜单按钮事件
                 toUserBaseMessageXml = TextMessageResponse.buildMessageResponse(fromUserName,
                         toUserName,
@@ -165,33 +189,23 @@ public class CoreServlet {
 //    }
 
 
-    /*
-    * 获取用户城市
-    * */
-    public String getWechatUserCity(WechatUser wechatUser){
-        String province = wechatUser.getProvince();
-        String city = wechatUser.getCity();
-        city = city.replace(" ","").replace("@", "o").replace(" ","").replace("　","")
-                .replace("%","％").replace("\\/","|").replace("\\.","。")
-                .replace("&","B").replace(":","：").replace("#","井")
-                .replace("$","¥").replace("*","米");
-        return city;
+    public UserData initUser(WechatUser wechatUser){
+        UserData userData = new UserData();
+        userData.setAvatarUrl(wechatUser.getHeadimgurl());
+        userData.setGender(wechatUser.getSex());
+        userData.setCity(wechatUser.getCity());
+        userData.setCountry(wechatUser.getCountry());
+        userData.setNickname(wechatUser.getNickname());
+        userData.setUserUnionId(wechatUser.getUnionid());
+        userData.setOpenId(wechatUser.getOpenid());
+        userData.setUserChannel(1);
+        userData.setProvince(wechatUser.getProvince());
+        return userData;
     }
-    public User initUser(WechatUser wechatUser){
-        User userReq = new User();
-        userReq.setCity(getWechatUserCity(wechatUser));
-        userReq.setHeadImg(wechatUser.getHeadimgurl());
-        userReq.setUsername(wechatUser.getOpenid());
-        userReq.setAccType(0);
-        userReq.setSex(wechatUser.getSex()+"");
-        String nickName = wechatUser.getNickname();
-        nickName = nickName.replace("@","o").replace(" ","").replace("　","")
-                .replace("%","％").replace("\\/","|").replace("\\.","。")
-                .replace("&","B").replace(":","：").replace("#","井")
-                .replace("$","¥").replace("*","米");
-        userReq.setNickName(nickName);
-        userReq.setUnionid(wechatUser.getUnionid());
-        return userReq;
+
+    //查询后台是否由用户
+    public UserData getUserData (String openid){
+        return userClient.getUserByOpenId(openid,1);
     }
 
     /*
