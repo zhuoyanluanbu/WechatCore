@@ -11,6 +11,11 @@ public class DetailAddress extends MyObject {
     private String street;//街道
     private String street_number;//门牌号
 
+    private double lat;
+    private double lng;
+
+
+
     public DetailAddress(String formatted_address, String district, String province, String city) {
         this.formatted_address = formatted_address;
         this.district = district;
@@ -18,16 +23,19 @@ public class DetailAddress extends MyObject {
         this.city = city;
     }
 
+
     public DetailAddress() {
     }
 
-    public DetailAddress(String formatted_address, String district, String province, String city, String street, String street_number) {
+    public DetailAddress(String formatted_address, String district, String province, String city, String street, String street_number,double lat,double lng) {
         this.formatted_address = formatted_address;
         this.district = district;
         this.province = province;
         this.city = city;
         this.street = street;
         this.street_number = street_number;
+        this.lat = lat;
+        this.lng = lng;
     }
 
     public String getFormatted_address() {
@@ -77,4 +85,21 @@ public class DetailAddress extends MyObject {
     public void setStreet_number(String street_number) {
         this.street_number = street_number;
     }
+
+    public double getLat() {
+        return lat;
+    }
+
+    public void setLat(double lat) {
+        this.lat = lat;
+    }
+
+    public double getLng() {
+        return lng;
+    }
+
+    public void setLng(double lng) {
+        this.lng = lng;
+    }
 }
+

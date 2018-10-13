@@ -5,6 +5,7 @@ import com.entites.AccountData;
 import com.entites.SystemGiveForm;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.cloud.netflix.feign.FeignClient;
+import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
  * Time: 18:22
  * To change this template use File | Settings | File Templates.
  */
+@Component
 @FeignClient("account-server")
 public interface AccountClient {
 

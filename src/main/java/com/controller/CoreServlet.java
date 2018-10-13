@@ -7,13 +7,17 @@ import com.message.entity.BaseMessage;
 import com.message.entity.LocationMessage;
 import com.message.entity.TextMessage;
 import com.message.response.TextMessageResponse;
+import com.myaop.UserDataJoinPoint;
 import com.service.AccountClient;
+import com.service.CouponClient;
 import com.service.UserClient;
 import com.util.*;
 import com.custommessage.CustomMsgSender;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,13 +37,8 @@ public class CoreServlet {
 
     private String controllerName = "CoreServlet";
 
-    ObjectMapper mapper = new ObjectMapper();
-
     @Autowired
-    UserClient userClient;
-
-    @Autowired
-    AccountClient accountClient;
+    CouponClient couponClient;
 
     @Autowired
     BaiduUtil baiduUtil;
@@ -117,39 +116,29 @@ public class CoreServlet {
             String enventParam = map.get("eventKey");
             if(eventName.equalsIgnoreCase("subscribe")){//关注事件
                 toUserBaseMessageXml = TextMessageResponse.buildMessageResponse(fromUserName,toUserName,subscribeRespContent);
-                //新用户只要关注就赠送余额
-                UserData userData = getUserData(fromUserName);
-                if (userData==null){//新用户，进行注册并送余额
-                    userData = initUser(WechatRequests.getWechatUserByOpenId(GetTokenTicket.wechatTokenAndTicket.getToken(),fromUserName));
-                    userData = userClient.saveUser(userData);//新生成的用户
-                    accountClient.systemGive(new SystemGiveForm(userData.getId(),5000,1,"新用户关注送50元")); //送余额
-                }else {//更新用户信息
-                    userData = initUser(WechatRequests.getWechatUserByOpenId(GetTokenTicket.wechatTokenAndTicket.getToken(),fromUserName));
-                    userClient.updateUser(userData);
-                }
-
                 if (enventParam!=null && enventParam.length()>0){//扫描代参二维码(关注)
-
-                }else {
-
+                    enventParam = enventParam.split("_")[1];
+                    fromUserName += "~~~"+enventParam;
                 }
-
+                subscribeEvent(fromUserName);
+                if (fromUserName.contains("~~~")){
+                    scanParamQRCodeEvent(enventParam);
+                }
             }else if(eventName.equalsIgnoreCase("unsubscribe")){
                 logger.info("用户["+fromUserName+"]取消了关注");
             }else if(eventName.equalsIgnoreCase("scan")){//关注了的用户扫描二维码
                 if (enventParam!=null && enventParam.length()>0){
-
                 }
             }else if(eventName.equalsIgnoreCase("location")){//上报位置事件
                 LocationMessage locationMessage = MyObject.toBean(MyObject.mapToJsonStr(map),LocationMessage.class);
                 fromBaseMessage = locationMessage;
-                DetailAddress adress = baiduUtil.getDetailAddressByLatLng(locationMessage.getLatitude(), locationMessage.getLongitude());
-                toUserBaseMessageXml = TextMessageResponse.buildMessageResponse(fromUserName,
-                        toUserName,adress.getFormatted_address());
+                DetailAddress address =  uploadLocationEvent(fromUserName,locationMessage);
+//                toUserBaseMessageXml = TextMessageResponse.buildMessageResponse(fromUserName,
+//                        toUserName,address.getFormatted_address());
             }else if(eventName.equalsIgnoreCase("click")){//点击菜单按钮事件
                 toUserBaseMessageXml = TextMessageResponse.buildMessageResponse(fromUserName,
                         toUserName,
-                        this.clickEvent(enventParam));
+                        this.clickEvent(fromUserName,enventParam));
             }
 
         }else {//其他类型消息
@@ -158,68 +147,50 @@ public class CoreServlet {
         return toUserBaseMessageXml;
     }
 
-    public String clickEvent(String key){
+    @Autowired
+    UserDataJoinPoint userDataJoinPoint;
+
+    //关注事件
+    @RequestMapping(value = "/subscribeEvent")
+    public void subscribeEvent(String fromUserName){
+        userDataJoinPoint.dealUserData(fromUserName, null);
+    }
+
+    //扫描带参二维码事件
+    private void scanParamQRCodeEvent(String qrcodeParam){
+        System.out.println("scanParamQRCodeEvent:"+qrcodeParam);
+        new Thread(() -> {
+            SimpleResponseBody<Order> orderSimpleResponseBody = couponClient.giveCoupons(Integer.parseInt(qrcodeParam));
+            System.out.println(orderSimpleResponseBody);
+        }).start();
+    }
+
+    //上报地理位置事件
+    private DetailAddress uploadLocationEvent(String fromUserName,LocationMessage locationMessage){
+        DetailAddress adress = baiduUtil.getDetailAddressByLatLng(locationMessage.getLatitude(), locationMessage.getLongitude());
+        userDataJoinPoint.dealUserData(fromUserName, adress);
+        return adress;
+    }
+
+    @Autowired
+    QrCodeController qrCodeController;
+    //点击按钮事件
+    private String clickEvent(String fromUserName,String key){
         if (key.equalsIgnoreCase("CONTACT_US")){
             return "电话：18723229138";
         }else if(key.equalsIgnoreCase("PRODUCT_INTRODUCTION")){
             return subscribeRespContent;
+        }else if (key.equalsIgnoreCase("INVITE_FRIENDS")){
+            UserData userData = userDataJoinPoint.dealUserData(fromUserName,null);
+            if (userData.getId() > 0) {
+                QrResp qrResp = qrCodeController.getQrTicket((int)userData.getId());
+                String qrCodeImageUrl = "https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket="+qrResp.getTicket();
+                return "<a href='"+ qrCodeImageUrl +"'>点我展示二维码</a>";
+            }
         }
         return "";
     }
 
-
-//    //fromEvent事件来源，0表示关注事件，1表示扫描事件
-//    //scanParam扫描参数，也可以是其他的自定义参数，比如新用户关注
-//    public void asyncGiveCoupons(final BaseMessage baseMessage,final String scanParam,final int fromEvent){
-//        new Thread(()->{
-//            try {
-//                String openId = baseMessage.getFromUserName();
-//                WechatUser wechatUser = userService.getWechatUser(openId);
-//                if(fromEvent == 1){//扫描事件
-//                    giveCouponsToUser(scanParam,wechatUser);
-//                    logger.info("["+openId+"]扫描事件领取卡券");
-//                }else if (fromEvent == 0){//关注事件
-//                    giveCouponsToUser(scanParam,wechatUser);
-//                    logger.info("["+openId+"]关注事件领取卡券");
-//                }
-//            }catch (HttpApiException e) {
-//                logger.error(e);
-//            }
-//        }).start();
-//    }
-
-
-    public UserData initUser(WechatUser wechatUser){
-        UserData userData = new UserData();
-        userData.setAvatarUrl(wechatUser.getHeadimgurl());
-        userData.setGender(wechatUser.getSex());
-        userData.setCity(wechatUser.getCity());
-        userData.setCountry(wechatUser.getCountry());
-        userData.setNickname(wechatUser.getNickname());
-        userData.setUserUnionId(wechatUser.getUnionid());
-        userData.setOpenId(wechatUser.getOpenid());
-        userData.setUserChannel(1);
-        userData.setProvince(wechatUser.getProvince());
-        return userData;
-    }
-
-    //查询后台是否由用户
-    public UserData getUserData (String openid){
-        return userClient.getUserByOpenId(openid,1);
-    }
-
-    /*
-    * 异步给用户发消息
-    * */
-    public void asyncPushMsg(final MsgPushReq msgPushReq){
-        new Thread(() -> {
-            try {
-                CustomMsgSender.sendTextMsg(msgPushReq.getOpenid(),msgPushReq.getMsg());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }).start();
-    }
 
     /*
     * 根据用户发送的文字内容构建回复消息
@@ -245,14 +216,6 @@ public class CoreServlet {
         String respContent = subscribeRespContent;
         return respContent;
     }
-    /*
-    * 新用户送天棒消息——异步发送消息
-    * */
-    public void asyncBuildTextMessageForSubscribeWhichUserIsNew(final String openId){
-
-    }
-
-
 
 
 

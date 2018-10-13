@@ -38,9 +38,11 @@ public class MenuCreater extends MyObject{
         Button cen1 = new ClickButton("联系方式","CONTACT_US");
         Button cen2 = new ClickButton("产品介绍","PRODUCT_INTRODUCTION");
         Button cen3 = new ViewButton("问题反馈","https://www.wjx.top/jq/28896672.aspx");
+        Button cen4 = new ClickButton("邀请好友","INVITE_FRIENDS");
         centerBtns.add(cen1);
         centerBtns.add(cen2);
         centerBtns.add(cen3);
+        centerBtns.add(cen4);
         FatherButton fatherButtonCenter = new FatherButton("关于我们",centerBtns);
 
 

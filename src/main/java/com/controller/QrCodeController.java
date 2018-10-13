@@ -33,8 +33,7 @@ public class QrCodeController {
     * 永久二维码
     * */
     @RequestMapping(value = "/tickect/forever/{params}",produces = "application/json;charset=utf-8")
-    public QrResp getQrTicket(HttpServletRequest request,HttpServletResponse response,
-                                     @PathVariable("params")String params){
+    public QrResp getQrTicket(@PathVariable("params")String params){
         QrResp qrResp = new QrResp();
         try {
             String scene_str = params;//微信要求length 1--64
@@ -52,25 +51,10 @@ public class QrCodeController {
     * 临时二维码
     * */
     @RequestMapping(value = "/tickect/temp/{scene_id}",produces = "application/json;charset=utf-8")
-    public QrResp getQrTicket(HttpServletRequest request,HttpServletResponse response,
-                                     @PathVariable("scene_id")int scene_id){
+    public QrResp getQrTicket(@PathVariable("scene_id")int scene_id){
         QrResp qrResp = new QrResp();
         try {
-            if(scene_id > 100000) scene_id = 100000;//微信只支持1到10000
-            String expire_seconds_str = request.getParameter("expire_seconds");
             QrTempReq qrTempReq = new QrTempReq(new QrActionInfo(new QrTempScene(scene_id)));
-            if(expire_seconds_str!=null && !expire_seconds_str.trim().isEmpty()){
-                try {
-                    int expire_seconds = Integer.parseInt(expire_seconds_str);
-                    if(expire_seconds < 604800){//至少7天
-                        qrTempReq.setExpire_seconds(604800);
-                    }else {
-                        qrTempReq.setExpire_seconds(expire_seconds);
-                    }
-                }catch (Exception e){
-                    e.printStackTrace();
-                }
-            }
             qrResp = WechatRequests.getQrTicketTemp(qrTempReq,GetTokenTicket.wechatTokenAndTicket.getToken());
         }  catch (Exception e){
             e.printStackTrace();

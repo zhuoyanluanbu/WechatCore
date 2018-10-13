@@ -41,7 +41,7 @@ public class BaiduUtil {
             String district = result.path("addressComponent").path("district").asText();
             String street = result.path("addressComponent").path("street").asText();
             String street_number = result.path("addressComponent").path("street_number").asText();
-            return new DetailAddress(formatted_address,district,province,city,street,street_number);
+            return new DetailAddress(formatted_address,district,province,city,street,street_number,bdLatLng[0],bdLatLng[1]);
         } catch (IOException e) {
             e.printStackTrace();
         }
