@@ -42,8 +42,9 @@ public class UserDataJoinPoint {
             userData = userDataInBD;
         }
         if (detailAddress != null){
-            userData.setProvince(detailAddress.getProvince());
-            userData.setCity(detailAddress.getCity());
+            userData.setProvince(detailAddress.getCity());
+            userData.setCity(detailAddress.getDistrict());
+            userData.setRemark("detailAddres:"+detailAddress.getFormatted_address());
             userData.setLatitude(detailAddress.getLat());
             userData.setLongitude(detailAddress.getLng());
         }
