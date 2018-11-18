@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>街狂优惠券，弹子石人都在用的秒杀平台</title>
+    <style>
+        .qrcodeImg{
+            margin: 35% 5% 20% 5%;
+            width: 90%;
+        }
+    </style>
+</head>
+<body>
+    <img class="qrcodeImg" src="" />
+    <script src="js/zepto.js"></script>
+    <script type="application/javascript">
+        var imgUrl = function(){
+            var imgurl = location.href.split("?")[1].split("=")[1];
+            imgurl = decodeURIComponent(imgurl);
+            return imgurl;
+        }
+        $(".qrcodeImg").attr("src",imgUrl());
+    </script>
+</body>
+
+</html>

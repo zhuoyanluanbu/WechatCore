@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Map;
 
 /**
@@ -45,6 +46,11 @@ public class CoreServlet {
 
     @Value("${subscribeRespContent}")
     String subscribeRespContent;
+
+
+
+    @Value("${pageDomain}")
+    String pageDomain;
 
 
     @RequestMapping(value = "/servlet/CoreServlet",method = RequestMethod.GET)
@@ -185,6 +191,7 @@ public class CoreServlet {
             if (userData.getId() > 0) {
                 QrResp qrResp = qrCodeController.getQrTicket((int)userData.getId());
                 String qrCodeImageUrl = "https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket="+qrResp.getTicket();
+                qrCodeImageUrl = pageDomain + "/qrcode.html?imgUrl=" + URLEncoder.encode(qrCodeImageUrl);
                 return "<a href='"+ qrCodeImageUrl +"'>点我展示二维码</a>";
             }
         }
@@ -206,7 +213,7 @@ public class CoreServlet {
 //            }
 //        }
 //        return respContent;
-        return "";
+        return subscribeRespContent;
     }
 
     /*
